@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tienda Lumina Pocket — Market clásico</title>
+<style>
+  :root{
+    --primary:#3ddc84;
+    --bg:#f2f5f3;
+    --card:#fff;
+    --muted:#6b6b6b;
+    --accent:#2b7a3a;
+    --radius:12px;
+    font-family: "Roboto", "Inter", Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#edf6f0,#f7fbfa);color:#111;min-height:100vh}
+  /* App bar */
+  .appbar{display:flex;align-items:center;justify-content:space-between;background:var(--primary);color:#fff;padding:10px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.15)}
+  .logo{font-weight:700}
+  .appbar-center{flex:1;display:flex;justify-content:center}
+  #search{width:360px;max-width:60vw;padding:8px 12px;border-radius:20px;border:none;outline:none;font-size:14px}
+  .appbar-right button{background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:8px 12px;border-radius:12px;cursor:pointer}
+  /* categories */
+  .categories{display:flex;gap:8px;padding:12px 16px;overflow:auto}
+  .cat{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 12px;border-radius:20px;cursor:pointer;font-size:13px}
+  .cat.active{background:var(--primary);color:white;border-color:var(--primary)}
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:16px;max-width:1100px;margin:0 auto}
+  .card{background:var(--card);border-radius:var(--radius);padding:12px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 4px 10px rgba(12,12,12,0.06)}
+  .icon{width:64px;height:64px;border-radius:14px;background:#eee;flex:0 0 64px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .icon img{width:100%;height:100%;object-fit:cover}
+  .info{flex:1}
+  .appname{font-weight:700;margin:0}
+  .developer{color:var(--muted);font-size:13px;margin:4px 0}
+  .meta{font-size:12px;color:var(--muted)}
+  .actions{display:flex;flex-direction:column;gap:8px}
+  .btn{background:var(--accent);color:white;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;text-decoration:none;text-align:center;font-weight:600;font-size:14px;display:inline-block}
+  .btn.secondary{background:#666}
+  .empty{text-align:center;color:var(--muted);padding:32px;display:none}
+  .footer{padding:16px;text-align:center;color:var(--muted);font-size:13px}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.open{display:flex}
+  .modal-card{background:var(--card);border-radius:12px;padding:18px;max-width:900px;width:100;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+  .detail{display:flex;gap:16px;align-items:flex-start}
+  .detail .icon{width:120px;height:120px;border-radius:18px;flex:0 0 120px}
+  .desc{padding-top:8px;color:#222}
+  .close{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:6px 10px;border-radius:10px;cursor:pointer}
+  @media (max-width:520px){
+    #search{width:180px}
+    .grid{padding:10px;gap:10px}
+    .detail{flex-direction:column;align-items:center;text-align:center}
+    .detail .icon{width:100px;height:100px}
+  }
+  /* little retro market header look */
+  .market-title{font-size:14px;letter-spacing:0.6px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:#fff;padding:6px 8px;border-radius:8px;font-size:12px;border:1px solid rgba(0,0,0,0.05)}
+</style>
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar-left">
+      <div class="logo">Lumina Pocket Market</div>
+      <div class="market-title" style="font-weight:500;font-size:12px;margin-left:10px;color:rgba(255,255,255,0.95)">Apps para tu dispositivo</div>
+    </div>
+    <div class="appbar-center">
+      <input id="search" placeholder="Buscar apps, por ejemplo: linterna, juego..." />
+    </div>
+    <div class="appbar-right">
+      <button id="refresh">Actualizar</button>
+    </div>
+  </header>
+
+  <nav class="categories">
+    <button class="cat active" data-cat="all">Todas</button>
+    <button class="cat" data-cat="utilities">Utilidades</button>
+    <button class="cat" data-cat="games">Juegos</button>
+    <button class="cat" data-cat="devtools">Desarrollo</button>
+  </nav>
+
+  <main>
+    <section id="grid" class="grid"></section>
+    <div id="empty" class="empty">No se encontraron apps.</div>
+  </main>
+
+  <footer class="footer">
+    <small>Diseño inspirado en el Android Market clásico • Archivo único (index.html)</small>
+  </footer>
+
+  <!-- Modal detalle -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-card" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="chips">
+          <button id="backBtn" class="close">← Volver</button>
+        </div>
+        <div><button id="closeModal" class="close">Cerrar ✕</button></div>
+      </div>
+      <div id="modalBody" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+<script>
+/*
+  Archivo HTML único: apps embebidas como texto en el arreglo "APPS".
+  Cada app tiene: id, name, developer, description, iconColor, iconLetter, fileName, fileContent (string), fileType, version, rating, downloads, category.
+  Al cargar, creamos Blob URLs para cada archivo y los usamos en los enlaces de descarga.
+  Para añadir apps: edita el arreglo APPS (puedes pegar el contenido del .py en fileContent).
+*/
+
+const APPS = [
+  {
+    id: "linterna-1",
+    name: "Linterna Pocket",
+    developer: "Equipo Lumina",
+    description: "Linterna simple para Lumina Pocket. Presiona instalar y ejecuta el .py en tu dispositivo.",
+    iconColor: "#FFD54F",
+    iconLetter: "L",
+    fileName: "linterna-1.py",
+    fileContent: `# Linterna Pocket v1.1
+# Ejemplo: enciende LED o muestra brillo máximo
+def main():
+    print("Linterna activada")
+if __name__ == "__main__":
+    main()
+`,
+    fileType: "text/plain",
+    version: "1.1",
+    rating: 4.6,
+    downloads: 1240,
+    category: "utilities"
+  },
+  {
+    id: "juego-blocks",
+    name: "Blocks Pocket",
+    developer: "IndieDev",
+    description: "Puzzle retro para pantallas pequeñas. (Paquete .zip de ejemplo).",
+    iconColor: "#90CAF9",
+    iconLetter: "B",
+    fileName: "blocks-pkg.zip",
+    fileContent: "PK\\u0003\\u0004... (zip placeholder) Si quieres subir un zip real, reemplaza fileContent por base64 y marca isBase64=true.",
+    fileType: "application/zip",
+    isBase64: false,
+    version: "0.9",
+    rating: 4.2,
+    downloads: 890,
+    category: "games"
+  },
+  {
+    id: "term-lite",
+    name: "Term-Lite",
+    developer: "DevTools",
+    description: "Terminal pequeño para ejecutar scripts python en Lumina Pocket.",
+    iconColor: "#A5D6A7",
+    iconLetter: "T",
+    fileName: "term-lite.py",
+    fileContent: `# Term-Lite v0.3
+# Un mini intérprete de demo (ejemplo)
+def run_cmd(cmd):
+    print("Ejecutando:", cmd)
+if __name__ == "__main__":
+    run_cmd("echo Hola Lumina")
+`,
+    fileType: "text/plain",
+    version: "0.3",
+    rating: 4.8,
+    downloads: 415,
+    category: "devtools"
+  }
+];
+
+/* Utility: crea icono SVG data URL usando color y letra */
+function makeIconDataURL(color, letter){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
+    <rect width='100%' height='100%' rx='20' fill='${color}'/>
+    <text x='50%' y='54%' font-size='62' text-anchor='middle' fill='#111' font-family='Roboto,Arial,sans-serif' dy='.35em'>${letter}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+/* Crear Blob URL para descargar el archivo embebido.
+   Si app.isBase64 true -> decode base64 first (not used by default).
+*/
+function makeBlobURL(app){
+  if(app._url) return app._url;
+  let blob;
+  if(app.isBase64){
+    // decode base64 to bytes
+    try{
+      const binary = atob(app.fileContent);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for(let i=0;i<len;i++) bytes[i]=binary.charCodeAt(i);
+      blob = new Blob([bytes], {type: app.fileType || 'application/octet-stream'});
+    }catch(e){
+      // fallback: treat as text
+      blob = new Blob([app.fileContent], {type: app.fileType || 'text/plain'});
+    }
+  }else{
+    blob = new Blob([app.fileContent], {type: app.fileType || 'text/plain'});
+  }
+  const url = URL.createObjectURL(blob);
+  app._url = url;
+  return url;
+}
+
+/* DOM helpers */
+function el(tag, attrs={}, ...children){
+  const e = document.createElement(tag);
+  for(const k in attrs){
+    if(k.startsWith('on') && typeof attrs[k]==='function') e.addEventListener(k.slice(2), attrs[k]);
+    else if(k==='html') e.innerHTML = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  for(const c of children) if(c) e.append(typeof c==='string'? document.createTextNode(c) : c);
+  return e;
+}
+
+/* Render grid */
+function renderGrid(apps){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if(!apps.length){ document.getElementById('empty').style.display='block'; return }
+  document.getElementById('empty').style.display='none';
+  apps.forEach(a=>{
+    const iconUrl = makeIconDataURL(a.iconColor||'#eee', a.iconLetter||(a.name[0]||'?'));
+    const card = el('article',{class:'card'},
+      el('div',{class:'icon'}, el('img',{src:iconUrl, alt:a.name})),
+      el('div',{class:'info'},
+        el('div',{class:'appname'}, a.name),
+        el('div',{class:'developer'}, a.developer + (a.version? ' • v'+a.version: '')),
+        el('div',{class:'meta'}, `${a.rating||0} ★ • ${a.downloads||0} descargas`)
+      ),
+      el('div',{class:'actions'},
+        el('a',{class:'btn', href:'#', onClick:(ev)=>{ev.preventDefault(); openDetail(a.id)}}, 'Ver'),
+        el('a',{class:'btn', href: makeBlobURL(a), download: a.fileName}, 'Instalar')
+      )
+    );
+    grid.appendChild(card);
+  });
+}
+
+/* Detail modal */
+function openDetail(id){
+  const app = APPS.find(x=>x.id===id);
+  if(!app) return;
+  const modal = document.getElementById('modal');
+  const body = document.getElementById('modalBody');
+  modal.setAttribute('aria-hidden','false');
+  modal.classList.add('open');
+  body.innerHTML = '';
+  const iconUrl = makeIconDataURL(app.iconColor||'#eee', app.iconLetter||(app.name[0]||'?'));
+  const detail = el('div',{class:'detail'},
+    el('div',{class:'icon'}, el('img',{src:iconUrl, alt:app.name})),
+    el('div',{style:'flex:1'},
+      el('h2',{}, app.name),
+      el('div',{class:'developer'}, app.developer + (app.version? ' • v'+app.version: '')),
+      el('div',{class:'meta'}, `${app.rating||0} ★ • ${app.downloads||0} descargas`),
+      el('div',{class:'desc', style:'margin-top:12px;'}, el('p',{}, app.description||'Sin descripción')),
+      el('div',{style:'margin-top:14px;display:flex;gap:8px;flex-wrap:wrap'},
+        el('a',{class:'btn', href: makeBlobURL(app), download: app.fileName}, 'Instalar'),
+        el('a',{class:'btn secondary', href: makeBlobURL(app), target:'_blank'}, 'Ver archivo'),
+        el('button',{class:'close', onClick:()=>closeModal()}, 'Cerrar')
+      )
+    )
+  );
+  body.appendChild(detail);
+}
+
+/* close modal */
+function closeModal(){
+  const modal = document.getElementById('modal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+}
+
+/* Filter & search */
+function filterApps(q, cat){
+  q = (q||'').trim().toLowerCase();
+  return APPS.filter(a=>{
+    if(cat && cat!=='all' && a.category !== cat) return false;
+    if(!q) return true;
+    return (a.name + ' ' + a.developer + ' ' + (a.description||'')).toLowerCase().includes(q);
+  });
+}
+
+/* Init UI */
+(function init(){
+  // create blob URLs in advance (optional)
+  APPS.forEach(a=>makeBlobURL(a));
+  renderGrid(APPS);
+
+  const search = document.getElementById('search');
+  const refresh = document.getElementById('refresh');
+  const catBtns = document.querySelectorAll('.cat');
+  let activeCat = 'all';
+
+  search.addEventListener('input', ()=> {
+    const filtered = filterApps(search.value, activeCat);
+    renderGrid(filtered);
+  });
+
+  refresh.addEventListener('click', ()=> {
+    // en este archivo único refresh solo re-renderiza
+    renderGrid(filterApps(search.value, activeCat));
+  });
+
+  catBtns.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      catBtns.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      activeCat = b.dataset.cat;
+      renderGrid(filterApps(search.value, activeCat));
+    });
+  });
+
+  // modal close handlers
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('backBtn').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', (e)=>{
+    if(e.target === document.getElementById('modal')) closeModal();
+  });
+
+  // keyboard escape
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+})();
+</script>
+</body>
+</html>
